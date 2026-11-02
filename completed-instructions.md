@@ -17,106 +17,108 @@ Full specification, including acceptance criteria AC-1 to AC-38: [`docs/specs/li
 
 ### Stack and tooling
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D1 | pnpm workspaces monorepo: `apps/api`, `apps/web`, `packages/schemas` | Two independent folders; single React Router framework-mode app | Shared Zod schema keeps API, web, and tests on one source of truth. Separate apps keep the brief's backend/front-end split. | Human |
-| D2 | API: Fastify + Zod, TypeScript strict | Express | Built-in schema hooks, `inject` for HTTP tests without a running server, strong typing. | Human |
-| D3 | Web: Vite + React + TypeScript | React Router framework mode, Next.js | Fast local dev, plain SPA matches "a page", no server rendering needed. | Human |
-| D4 | Styling: Tailwind CSS v4 through `@tailwindcss/vite` | Plain CSS, CSS modules, Tailwind v3 + PostCSS | Quick to make the page look good. v4 needs no PostCSS or config file. | Human (Tailwind), Agent (v4) |
-| D5 | No component library on top of Tailwind | shadcn/ui, Headless UI | One form and one list do not need one. | Agent |
-| D6 | Web calls relative `/assets`; Vite dev server proxies to `http://localhost:3000` | CORS on the API | Same-origin in the browser; no CORS configuration to get wrong. | Agent |
-| D7 | Testing: Vitest everywhere; Fastify `inject` with in-memory SQLite for API; React Testing Library + MSW for web; one Playwright journey | Supertest, Jest, Cypress | Matches the project's `CLAUDE.md` standards. | Agent |
-| D8 | Node 24 LTS, pinned in `.nvmrc` and `engines` | Node 20/22 | `node:sqlite` needs Node 22.5 or later; 24 is the current LTS. | Agent |
-| D9 | pnpm pinned through the `packageManager` field; Corepack installed with `npm install --global corepack` | `npm i -g pnpm`; rely on Corepack bundled with Node | Exact pnpm version for everyone. Node 25+ no longer bundles Corepack, so the install step works on every version. | Agent |
-| D10 | Logging: Fastify's built-in pino logger. `info` on registration, `warn` on 400/409, `error` on 500 | `@sme-lending/logger` | The shared logger is not available in a standalone project. | Agent |
+| #   | Decision                                                                                                                                | Alternatives considered                                         | Rationale                                                                                                                   | Decided by                   |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| D1  | pnpm workspaces monorepo: `apps/api`, `apps/web`, `packages/schemas`                                                                    | Two independent folders; single React Router framework-mode app | Shared Zod schema keeps API, web, and tests on one source of truth. Separate apps keep the brief's backend/front-end split. | Human                        |
+| D2  | API: Fastify + Zod, TypeScript strict                                                                                                   | Express                                                         | Built-in schema hooks, `inject` for HTTP tests without a running server, strong typing.                                     | Human                        |
+| D3  | Web: Vite + React + TypeScript                                                                                                          | React Router framework mode, Next.js                            | Fast local dev, plain SPA matches "a page", no server rendering needed.                                                     | Human                        |
+| D4  | Styling: Tailwind CSS v4 through `@tailwindcss/vite`                                                                                    | Plain CSS, CSS modules, Tailwind v3 + PostCSS                   | Quick to make the page look good. v4 needs no PostCSS or config file.                                                       | Human (Tailwind), Agent (v4) |
+| D5  | No component library on top of Tailwind                                                                                                 | shadcn/ui, Headless UI                                          | One form and one list do not need one.                                                                                      | Agent                        |
+| D6  | Web calls relative `/assets`; Vite dev server proxies to `http://localhost:3000`                                                        | CORS on the API                                                 | Same-origin in the browser; no CORS configuration to get wrong.                                                             | Agent                        |
+| D7  | Testing: Vitest everywhere; Fastify `inject` with in-memory SQLite for API; React Testing Library + MSW for web; one Playwright journey | Supertest, Jest, Cypress                                        | Matches the project's `CLAUDE.md` standards.                                                                                | Agent                        |
+| D8  | Node 24 LTS, pinned in `.nvmrc` and `engines`                                                                                           | Node 20/22                                                      | `node:sqlite` needs Node 22.5 or later; 24 is the current LTS.                                                              | Agent                        |
+| D9  | pnpm pinned through the `packageManager` field; Corepack installed with `npm install --global corepack`                                 | `npm i -g pnpm`; rely on Corepack bundled with Node             | Exact pnpm version for everyone. Node 25+ no longer bundles Corepack, so the install step works on every version.           | Agent                        |
+| D10 | Logging: Fastify's built-in pino logger. `info` on registration, `warn` on 400/409, `error` on 500                                      | `@sme-lending/logger`                                           | The shared logger is not available in a standalone project.                                                                 | Agent                        |
 
 ### Data model
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D11 | An asset is a book: `title`, `author`, `isbn`, `publishedYear` required; `genre` optional. The brief's "name" maps to `title`. | Name only; generic asset with a type | Gives meaningful filters while staying focused on books. | Human |
-| D12 | An asset is an edition, not a physical copy: ISBN is unique | Allow duplicate ISBNs, one record per copy | Follows from unique ISBN. Copy tracking is out of scope. | Human |
-| D13 | ISBN-10 or ISBN-13 with a valid checksum; hyphens and spaces stripped; stored as canonical ISBN-13 (an ISBN-10 gets the `978` prefix and a recalculated check digit) | Format-only check; store as entered | Catches typos; storing as canonical ISBN-13 makes duplicate detection reliable, so an ISBN-10 and its ISBN-13 equivalent are the same book. | Human |
-| D14 | Genre is a fixed enum: `fiction`, `non-fiction`, `science-fiction`, `fantasy`, `mystery`, `biography`, `history`, `children`, `poetry`, `other` | Free text; BISAC codes | Enum chosen by human for consistent filtering. Values proposed by agent, confirmed by human. | Human |
-| D15 | Server generates a UUID `id` and an ISO-8601 UTC `createdAt` | ISBN as primary key | Keeps ISBN an ordinary, validated field. | Agent |
-| D16 | Field limits: strings trimmed, 1–200 characters; `publishedYear` integer from 1450 to the current year | No limits | Rejects blank and absurd input. 1450 is roughly the start of the printing press. | Human |
+| #   | Decision                                                                                                                                                             | Alternatives considered                    | Rationale                                                                                                                                   | Decided by |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| D11 | An asset is a book: `title`, `author`, `isbn`, `publishedYear` required; `genre` optional. The brief's "name" maps to `title`.                                       | Name only; generic asset with a type       | Gives meaningful filters while staying focused on books.                                                                                    | Human      |
+| D12 | An asset is an edition, not a physical copy: ISBN is unique                                                                                                          | Allow duplicate ISBNs, one record per copy | Follows from unique ISBN. Copy tracking is out of scope.                                                                                    | Human      |
+| D13 | ISBN-10 or ISBN-13 with a valid checksum; hyphens and spaces stripped; stored as canonical ISBN-13 (an ISBN-10 gets the `978` prefix and a recalculated check digit) | Format-only check; store as entered        | Catches typos; storing as canonical ISBN-13 makes duplicate detection reliable, so an ISBN-10 and its ISBN-13 equivalent are the same book. | Human      |
+| D14 | Genre is a fixed enum: `fiction`, `non-fiction`, `science-fiction`, `fantasy`, `mystery`, `biography`, `history`, `children`, `poetry`, `other`                      | Free text; BISAC codes                     | Enum chosen by human for consistent filtering. Values proposed by agent, confirmed by human.                                                | Human      |
+| D15 | Server generates a UUID `id` and an ISO-8601 UTC `createdAt`                                                                                                         | ISBN as primary key                        | Keeps ISBN an ordinary, validated field.                                                                                                    | Agent      |
+| D16 | Field limits: strings trimmed, 1–200 characters; `publishedYear` integer from 1450 to the current year                                                               | No limits                                  | Rejects blank and absurd input. 1450 is roughly the start of the printing press.                                                            | Human      |
 
 ### Persistence
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D17 | SQLite file through `node:sqlite` at `apps/api/data/library.db` (gitignored), overridable with `DATABASE_PATH` | In-memory; JSON file | Survives restart, no extra infrastructure or dependency, real SQL filtering. | Human |
-| D18 | Persistence behind a repository interface | HTTP handlers call SQLite directly | Tests use in-memory SQLite; storage can change without touching routes. | Agent |
-| D19 | ISBN uniqueness enforced by a database unique index | Read-before-write check only | Correct under concurrent registrations. | Agent |
+| #   | Decision                                                                                                       | Alternatives considered            | Rationale                                                                    | Decided by |
+| --- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- | ---------- |
+| D17 | SQLite file through `node:sqlite` at `apps/api/data/library.db` (gitignored), overridable with `DATABASE_PATH` | In-memory; JSON file               | Survives restart, no extra infrastructure or dependency, real SQL filtering. | Human      |
+| D18 | Persistence behind a repository interface                                                                      | HTTP handlers call SQLite directly | Tests use in-memory SQLite; storage can change without touching routes.      | Agent      |
+| D19 | ISBN uniqueness enforced by a database unique index                                                            | Read-before-write check only       | Correct under concurrent registrations.                                      | Agent      |
 
 ### API behaviour
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D20 | Invalid input returns `400 { error: "ValidationError", details: [{ field, message }] }` | Generic 400 message | Lets the form show errors beside each field. | Human |
-| D21 | Unknown fields are rejected (strict schema) | Strip silently | Surfaces client mistakes instead of hiding them. | Human |
-| D22 | Malformed JSON returns `400`; non-JSON content type returns `415` | Treat both as 400 | Standard HTTP semantics. | Human |
-| D23 | Duplicate ISBN returns `409 { error: "DuplicateIsbn" }` | 400; silently return existing record | Conflict is not a validation failure. | Human |
-| D24 | Unexpected failures return `500 { error: "InternalError" }`, logged, with no internal detail | Pass through error message | Avoids leaking internals. | Agent |
-| D25 | Filters: `author` exact case-insensitive; `q` case-insensitive title substring; `publishedYear` exact; `genre` case-insensitive. Combined with AND | Author only; title only | Covers the main ways staff look up a book. | Human |
-| D26 | List returns `{ items }` sorted by `createdAt` descending; no pagination; no matches returns `200 { items: [] }`; invalid filter returns `400` | Limit/offset pagination; sort by title | Small local dataset; the wrapper leaves room for pagination later. | Human |
+| #   | Decision                                                                                                                                           | Alternatives considered                | Rationale                                                          | Decided by |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------ | ---------- |
+| D20 | Invalid input returns `400 { error: "ValidationError", details: [{ field, message }] }`                                                            | Generic 400 message                    | Lets the form show errors beside each field.                       | Human      |
+| D21 | Unknown fields are rejected (strict schema)                                                                                                        | Strip silently                         | Surfaces client mistakes instead of hiding them.                   | Human      |
+| D22 | Malformed JSON returns `400`; non-JSON content type returns `415`                                                                                  | Treat both as 400                      | Standard HTTP semantics.                                           | Human      |
+| D23 | Duplicate ISBN returns `409 { error: "DuplicateIsbn" }`                                                                                            | 400; silently return existing record   | Conflict is not a validation failure.                              | Human      |
+| D24 | Unexpected failures return `500 { error: "InternalError" }`, logged, with no internal detail                                                       | Pass through error message             | Avoids leaking internals.                                          | Agent      |
+| D25 | Filters: `author` exact case-insensitive; `q` case-insensitive title substring; `publishedYear` exact; `genre` case-insensitive. Combined with AND | Author only; title only                | Covers the main ways staff look up a book.                         | Human      |
+| D26 | List returns `{ items }` sorted by `createdAt` descending; no pagination; no matches returns `200 { items: [] }`; invalid filter returns `400`     | Limit/offset pagination; sort by title | Small local dataset; the wrapper leaves room for pagination later. | Human      |
 
 ### Web page
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D27 | One page: registration form and a filterable list | Separate pages for register and list | The brief asks for "a page". | Agent |
-| D28 | UX states: loading indicator, empty state, success message, inline field errors, submit disabled while pending, retry message when the API fails, form input kept on error | Minimal happy path | From the UX checklist; a competent developer would ship these. | Agent |
-| D29 | Accessible: labelled controls, full keyboard operation, visible focus indicators | — | WCAG 2.2 AA baseline. | Agent |
-| D30 | Genre filter and field are selects populated from the shared `GenreSchema` | Hard-coded options | One source of truth for genre values. | Agent |
+| #   | Decision                                                                                                                                                                   | Alternatives considered              | Rationale                                                      | Decided by |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------- | ---------- |
+| D27 | One page: registration form and a filterable list                                                                                                                          | Separate pages for register and list | The brief asks for "a page".                                   | Agent      |
+| D28 | UX states: loading indicator, empty state, success message, inline field errors, submit disabled while pending, retry message when the API fails, form input kept on error | Minimal happy path                   | From the UX checklist; a competent developer would ship these. | Agent      |
+| D29 | Accessible: labelled controls, full keyboard operation, visible focus indicators                                                                                           | —                                    | WCAG 2.2 AA baseline.                                          | Agent      |
+| D30 | Genre filter and field are selects populated from the shared `GenreSchema`                                                                                                 | Hard-coded options                   | One source of truth for genre values.                          | Agent      |
 
 ### Scope
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D31 | No update or delete | Add `PUT`/`DELETE` | The brief names only POST and GET. | Agent |
-| D32 | No authentication or authorization | API key; login | Local single-user tool; the brief names no actors. | Agent |
-| D33 | No undo for registration | Undo through delete | No delete endpoint exists. | Agent |
-| D34 | No deployment | Docker; cloud hosting | The goal is to run locally. | Agent |
+| #   | Decision                           | Alternatives considered | Rationale                                          | Decided by |
+| --- | ---------------------------------- | ----------------------- | -------------------------------------------------- | ---------- |
+| D31 | No update or delete                | Add `PUT`/`DELETE`      | The brief names only POST and GET.                 | Agent      |
+| D32 | No authentication or authorization | API key; login          | Local single-user tool; the brief names no actors. | Agent      |
+| D33 | No undo for registration           | Undo through delete     | No delete endpoint exists.                         | Agent      |
+| D34 | No deployment                      | Docker; cloud hosting   | The goal is to run locally.                        | Agent      |
 
 ### Documentation
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D35 | `README.md` documents Node prerequisites, Corepack and pnpm installation, `pnpm install`, `pnpm dev`, and the browser URL `http://localhost:5173` | Minimal README | A newcomer can run the project with no other help. | Human |
-| D36 | `README.md` also covers tests, database reset, and troubleshooting (wrong Node version, `pnpm` not found, port in use) | Start-up only | Low cost; avoids the most common local failures. | Agent |
+| #   | Decision                                                                                                                                          | Alternatives considered | Rationale                                          | Decided by |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------------------- | ---------- |
+| D35 | `README.md` documents Node prerequisites, Corepack and pnpm installation, `pnpm install`, `pnpm dev`, and the browser URL `http://localhost:5173` | Minimal README          | A newcomer can run the project with no other help. | Human      |
+| D36 | `README.md` also covers tests, database reset, and troubleshooting (wrong Node version, `pnpm` not found, port in use)                            | Start-up only           | Low cost; avoids the most common local failures.   | Agent      |
 
 ### CI and code quality
 
-| # | Decision | Alternatives considered | Rationale | Decided by |
-|---|---|---|---|---|
-| D37 | CI on GitHub Actions (`.github/workflows/ci.yml`), triggered by pull requests and pushes to `main` | Other CI providers; run on every branch push | The repository is on GitHub. PR and `main` triggers avoid duplicate runs for branch pushes that already have a PR. | Human |
-| D38 | Oxlint for linting and oxfmt for formatting, configured once at the root | ESLint and Prettier | Fast, single-binary tools with little configuration. | Human |
-| D39 | Formatting enforced in CI with `pnpm format:check` (`oxfmt --check`) | Format locally only | Choosing a formatter implies enforcing it; otherwise formatting drifts. | Agent |
-| D40 | Playwright is not run in CI for now; it runs locally only | Run Playwright in CI | Keeps CI fast and free of browser and two-app setup; the journey is checked locally before handoff. | Human |
+| #   | Decision                                                                                           | Alternatives considered                      | Rationale                                                                                                          | Decided by |
+| --- | -------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------- |
+| D37 | CI on GitHub Actions (`.github/workflows/ci.yml`), triggered by pull requests and pushes to `main` | Other CI providers; run on every branch push | The repository is on GitHub. PR and `main` triggers avoid duplicate runs for branch pushes that already have a PR. | Human      |
+| D38 | Oxlint for linting and oxfmt for formatting, configured once at the root                           | ESLint and Prettier                          | Fast, single-binary tools with little configuration.                                                               | Human      |
+| D39 | Formatting enforced in CI with `pnpm format:check` (`oxfmt --check`)                               | Format locally only                          | Choosing a formatter implies enforcing it; otherwise formatting drifts.                                            | Agent      |
+| D40 | Playwright is not run in CI for now; it runs locally only                                          | Run Playwright in CI                         | Keeps CI fast and free of browser and two-app setup; the journey is checked locally before handoff.                | Human      |
 
 ## Nice to Have
 
 Left out of the first run to keep it small. Each item notes why it would be worth doing next time.
 
-| Item | Why it would help |
-|---|---|
-| Full Turborepo setup | Cached, dependency-aware builds and tests across `apps/*` and `packages/*` as the workspace grows. |
-| Copy counts (total and available per book) | Makes the catalogue useful for real library stock, not just a list of titles. |
-| Split the instructions into multiple specs | Build the foundations first, then add functionality spec by spec; smaller specs are easier to plan, review and deliver. |
-| Wider Playwright coverage | This run has one local journey (S32) and no CI run (D40); more journeys and sad paths, run in CI, would catch UI regressions earlier. |
-| Quick mockup designs fed into the plan | Getting the design right up front is cheaper in time and money than tweaking the UI at the end. |
+| Item                                                                               | Why it would help                                                                                                                                 |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full Turborepo setup                                                               | Cached, dependency-aware builds and tests across `apps/*` and `packages/*` as the workspace grows.                                                |
+| Copy counts (total and available per book)                                         | Makes the catalogue useful for real library stock, not just a list of titles.                                                                     |
+| Split the instructions into multiple specs                                         | Build the foundations first, then add functionality spec by spec; smaller specs are easier to plan, review and deliver.                           |
+| Wider Playwright coverage                                                          | This run has one local journey (S32) and no CI run (D40); more journeys and sad paths, run in CI, would catch UI regressions earlier.             |
+| Quick mockup designs fed into the plan                                             | Getting the design right up front is cheaper in time and money than tweaking the UI at the end.                                                   |
 | A different backend Database, such as DynamoDB, with an MSW mock backend for tests | Closer to a production setup than local SQLite; MSW keeps web tests fast and independent of the real API. Needs setup time this run did not have. |
-| Authentication approaches | Needed once there is more than one user or the tool leaves localhost (see D32). |
-| More API operations, such as `DELETE` and `PATCH` | Lets users correct or remove books; out of scope because the brief names only `POST` and `GET` (see D31, D33). |
+| Authentication approaches                                                          | Needed once there is more than one user or the tool leaves localhost (see D32).                                                                   |
+| More API operations, such as `DELETE` and `PATCH`                                  | Lets users correct or remove books; out of scope because the brief names only `POST` and `GET` (see D31, D33).                                    |
 
 ## Implementation Plan
 
 ### Ticket
+
 - Key: LIBRARY-BOOKS (standalone project, no Jira ticket)
 - Spec: docs/specs/library-book-tracking.md
 
 ### Summary
+
 - Greenfield pnpm monorepo: `packages/schemas` (Zod), `apps/api` (Fastify, `node:sqlite`), `apps/web` (Vite, React, Tailwind v4).
 - `POST /assets` registers a book edition (unique, checksum-valid, normalised ISBN); `GET /assets` lists books newest first, filtered by `author`, `q`, `publishedYear`, `genre` (AND).
 - One page registers and lists books with loading, empty, success, inline error, pending and retry states, fully keyboard operable. Error text is staff-friendly and defined once (Message Catalogue).
@@ -125,46 +127,48 @@ Left out of the first run to keep it small. Each item notes why it would be wort
 - Built as 7 vertical slices: a walking skeleton (including CI, so every later slice is checked) first, then registration, validation, duplicates, failures, filters, and finally the Playwright journey and README completion. README sections land with the slice that makes them true.
 
 ### Plan
-| id | step | status |
-| --- | --- | --- |
-| S1 | Slice 1: Workspace, tooling and the shared genre list | completed |
-| S2 | Slice 1: API lists an empty catalogue | completed |
-| S3 | Slice 1: API configuration and start-up | completed |
-| S4 | Slice 1: Page layout, loading and the empty catalogue | completed |
-| S5 | Slice 1: CI workflow runs every check on PRs and pushes to main | completed |
-| S6 | Slice 1: Root `pnpm dev` and README start-up and CI sections | completed |
-| S7 | Slice 2: Shared registration and asset schemas | completed |
-| S8 | Slice 2: API registers a valid book | completed |
-| S9 | Slice 2: API lists registered books newest first | completed |
-| S10 | Slice 2: Books survive an API restart; README data section | completed |
-| S11 | Slice 2: Page lists registered books | completed |
-| S12 | Slice 2: Page registers a book and refreshes the list | completed |
-| S13 | Slice 2: Submit unavailable while a registration is pending | completed |
-| S14 | Slice 3: API rejects invalid title and author | completed |
-| S15 | Slice 3: API rejects invalid ISBNs | completed |
-| S16 | Slice 3: API rejects out-of-range or non-integer years | completed |
-| S17 | Slice 3: API rejects unknown genres and unknown fields | completed |
-| S18 | Slice 3: API rejects malformed, non-JSON and oversized bodies | completed |
-| S19 | Slice 3: Page shows field errors inline and keeps input | completed |
-| S20 | Slice 4: API rejects duplicate ISBNs | completed |
-| S21 | Slice 4: Page shows the duplicate-ISBN error beside ISBN | completed |
-| S22 | Slice 5: API returns a generic 500 and logs the failure | completed |
-| S23 | Slice 5: Page shows a retry message when registration fails | completed |
-| S24 | Slice 5: Page shows a retry message when the list fails | completed |
-| S25 | Slice 6: API filters by author | completed |
-| S26 | Slice 6: API filters by title text | completed |
-| S27 | Slice 6: API filters by publication year | completed |
-| S28 | Slice 6: API filters by genre | completed |
-| S29 | Slice 6: API combines filters and rejects unknown parameters | completed |
-| S30 | Slice 6: Page filter controls update the list | completed |
-| S31 | Slice 6: Page filter errors and registration with active filters | completed |
-| S32 | Slice 7: Playwright register-and-find journey | completed |
-| S33 | Slice 7: README Playwright section and clean-clone checklist | completed |
-| T1 | Step 6: Run the full suite (`pnpm test run`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:e2e`) and add tests for remaining gaps | completed |
-| R1 | Step 7: Self-review, cleanup, and acceptance-criteria check — tick every Traceability row (AC-35–37 as "verified locally, pending first CI run"; R1 does not wait for CI) | completed |
-| P1 | Step 8: PR handoff — record the first PR's CI run link in Notes; the user records the post-merge `main` run | pending |
+
+| id  | step                                                                                                                                                                      | status    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| S1  | Slice 1: Workspace, tooling and the shared genre list                                                                                                                     | completed |
+| S2  | Slice 1: API lists an empty catalogue                                                                                                                                     | completed |
+| S3  | Slice 1: API configuration and start-up                                                                                                                                   | completed |
+| S4  | Slice 1: Page layout, loading and the empty catalogue                                                                                                                     | completed |
+| S5  | Slice 1: CI workflow runs every check on PRs and pushes to main                                                                                                           | completed |
+| S6  | Slice 1: Root `pnpm dev` and README start-up and CI sections                                                                                                              | completed |
+| S7  | Slice 2: Shared registration and asset schemas                                                                                                                            | completed |
+| S8  | Slice 2: API registers a valid book                                                                                                                                       | completed |
+| S9  | Slice 2: API lists registered books newest first                                                                                                                          | completed |
+| S10 | Slice 2: Books survive an API restart; README data section                                                                                                                | completed |
+| S11 | Slice 2: Page lists registered books                                                                                                                                      | completed |
+| S12 | Slice 2: Page registers a book and refreshes the list                                                                                                                     | completed |
+| S13 | Slice 2: Submit unavailable while a registration is pending                                                                                                               | completed |
+| S14 | Slice 3: API rejects invalid title and author                                                                                                                             | completed |
+| S15 | Slice 3: API rejects invalid ISBNs                                                                                                                                        | completed |
+| S16 | Slice 3: API rejects out-of-range or non-integer years                                                                                                                    | completed |
+| S17 | Slice 3: API rejects unknown genres and unknown fields                                                                                                                    | completed |
+| S18 | Slice 3: API rejects malformed, non-JSON and oversized bodies                                                                                                             | completed |
+| S19 | Slice 3: Page shows field errors inline and keeps input                                                                                                                   | completed |
+| S20 | Slice 4: API rejects duplicate ISBNs                                                                                                                                      | completed |
+| S21 | Slice 4: Page shows the duplicate-ISBN error beside ISBN                                                                                                                  | completed |
+| S22 | Slice 5: API returns a generic 500 and logs the failure                                                                                                                   | completed |
+| S23 | Slice 5: Page shows a retry message when registration fails                                                                                                               | completed |
+| S24 | Slice 5: Page shows a retry message when the list fails                                                                                                                   | completed |
+| S25 | Slice 6: API filters by author                                                                                                                                            | completed |
+| S26 | Slice 6: API filters by title text                                                                                                                                        | completed |
+| S27 | Slice 6: API filters by publication year                                                                                                                                  | completed |
+| S28 | Slice 6: API filters by genre                                                                                                                                             | completed |
+| S29 | Slice 6: API combines filters and rejects unknown parameters                                                                                                              | completed |
+| S30 | Slice 6: Page filter controls update the list                                                                                                                             | completed |
+| S31 | Slice 6: Page filter errors and registration with active filters                                                                                                          | completed |
+| S32 | Slice 7: Playwright register-and-find journey                                                                                                                             | completed |
+| S33 | Slice 7: README Playwright section and clean-clone checklist                                                                                                              | completed |
+| T1  | Step 6: Run the full suite (`pnpm test run`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:e2e`) and add tests for remaining gaps                        | completed |
+| R1  | Step 7: Self-review, cleanup, and acceptance-criteria check — tick every Traceability row (AC-35–37 as "verified locally, pending first CI run"; R1 does not wait for CI) | completed |
+| P1  | Step 8: PR handoff — record the first PR's CI run link in Notes; the user records the post-merge `main` run                                                               | pending   |
 
 ### Changed Files
+
 - S1: `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.nvmrc`, `.npmrc`, `tsconfig.base.json`, `.oxlintrc.json`, `.oxfmtrc.json`, `.gitignore`, `packages/schemas/{package.json,tsconfig.json,vitest.config.ts}`, `packages/schemas/src/{index.ts,genre-schema.ts}`, `packages/schemas/src/__tests__/genre-schema.test.ts`
 - S2: `apps/api/{package.json,tsconfig.json,vitest.config.ts}`, `apps/api/src/{app.ts,routes/list-assets.ts}`, `apps/api/src/assets/{asset-repository.ts,open-database.ts,sqlite-asset-repository.ts}`, `apps/api/src/test-support/{build-test-app.ts,log-capture.ts}`, `apps/api/src/__tests__/list-assets.test.ts`, `packages/schemas/src/{asset-schema.ts,asset-list-response-schema.ts,index.ts}`, `pnpm-lock.yaml`
 - S3: `apps/api/src/{config.ts,start-server.ts,server.ts}`, `apps/api/src/assets/open-database.ts`, `apps/api/src/__tests__/{config.test.ts,start-server.test.ts}`, `apps/api/{package.json,vitest.config.ts}`, `pnpm-lock.yaml`
@@ -200,6 +204,7 @@ Left out of the first run to keep it small. Each item notes why it would be wort
 - S33: `README.md` (Playwright subsection, CI pointer, Troubleshooting: ports 3100/5174, esbuild policy, wrong-Node output), `pnpm-workspace.yaml` (`engineStrict: true`), `.npmrc` deleted
 
 ### Acceptance Criteria
+
 - [ ] AC-1: Valid body returns `201` with all fields, UUID `id`, `createdAt`, normalised `isbn`
 - [ ] AC-2: Omitted `genre` returns `201` with `genre: null`
 - [ ] AC-3: Missing, empty, whitespace-only or over-length `title`/`author` returns `400` naming the field
@@ -243,71 +248,71 @@ Left out of the first run to keep it small. Each item notes why it would be wort
 
 R1 ticks each row only when its steps are `completed` and their scenarios pass. AC-35–37 are ticked as "verified locally, pending first CI run"; P1 adds the PR run link and the user adds the post-merge run.
 
-| AC | Scenarios (slice) | Steps |
-|---|---|---|
-| AC-1 | A valid book is registered; ISBNs are stored as canonical ISBN-13; whitespace trimmed (2) | S7, S8 |
-| AC-2 | Genre is optional (2) | S7, S8 |
-| AC-3 | Invalid title or author; non-text title or author; length boundaries (3) | S14 |
-| AC-4 | Invalid ISBN; ISBN missing or not text (3); ISBNs stored as canonical ISBN-13 (2) | S15, S7 |
-| AC-5 | Out-of-range or non-integer year; boundary years (3) | S16 |
-| AC-6 | Genre outside the list (3) | S17 |
-| AC-7 | Unknown field (3) | S17 |
-| AC-8 | Body not a JSON object; non-JSON body refused (3) | S18 |
-| AC-9 | ISBN already registered in any hyphenation or ISBN-10/13 form; overlapping registrations (4) | S20 |
-| AC-10 | Registration/listing fails when the store is unavailable (5) | S22 |
-| AC-11 | Newest first; same-instant ordering (2) | S9 |
-| AC-12 | Author, title text, year, genre scenarios (6) | S25–S28 |
-| AC-13 | Filters combine (6) | S29 |
-| AC-14 | No matches (6) | S28 |
-| AC-15 | Invalid filter outline, including unknown parameter (6) | S27–S29 |
-| AC-16 | Survives a restart (2) | S10 |
-| AC-17 | Loading then empty (1); lists books with details (2) | S4, S11 |
-| AC-18 | Empty catalogue (1); nothing matches (6) | S4, S30 |
-| AC-19 | Register from the page (2); register with filters applied (6) | S12, S31 |
-| AC-20 | Field errors inline (3); duplicate beside ISBN (4) | S19, S21 |
-| AC-21 | Submit unavailable while pending (2) | S13 |
-| AC-22 | Staff filter the list; filter keyboard (6) | S30 |
-| AC-23 | Registration fails outline; list fails outline; form input survives a list failure; reload fails after success (5) | S23, S24 |
-| AC-24 | Keyboard registration (2); focus on first invalid field (3); filter keyboard (6); visible focus (7); axe checks (1–6) | S4, S12, S19, S30, S32 |
-| AC-25 | CI runs on a pull request (1) | S1, S5, T1 |
-| AC-26 | Newcomer starts both apps (1); Playwright journey (7) | S6, S32, S33 |
-| AC-27 | Register and find; duplicate ISBN (7) | S32 |
-| AC-28–33 | README checklist (7) | S6, S10, S33 |
-| AC-34 | Clean-clone walk-through (7) | S33 |
-| AC-35 | CI runs on a pull request; CI runs on push to main (1) — verified locally, pending first CI run | S5, P1 |
-| AC-36 | CI uses the pinned toolchain; lockfile mismatch fails (1) — verified locally, pending first CI run | S5, P1 |
-| AC-37 | CI fails when a check fails; Playwright absent (1) — verified locally, pending first CI run | S5, P1 |
-| AC-38 | README checklist (7) | S6, S33 |
+| AC       | Scenarios (slice)                                                                                                     | Steps                  |
+| -------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| AC-1     | A valid book is registered; ISBNs are stored as canonical ISBN-13; whitespace trimmed (2)                             | S7, S8                 |
+| AC-2     | Genre is optional (2)                                                                                                 | S7, S8                 |
+| AC-3     | Invalid title or author; non-text title or author; length boundaries (3)                                              | S14                    |
+| AC-4     | Invalid ISBN; ISBN missing or not text (3); ISBNs stored as canonical ISBN-13 (2)                                     | S15, S7                |
+| AC-5     | Out-of-range or non-integer year; boundary years (3)                                                                  | S16                    |
+| AC-6     | Genre outside the list (3)                                                                                            | S17                    |
+| AC-7     | Unknown field (3)                                                                                                     | S17                    |
+| AC-8     | Body not a JSON object; non-JSON body refused (3)                                                                     | S18                    |
+| AC-9     | ISBN already registered in any hyphenation or ISBN-10/13 form; overlapping registrations (4)                          | S20                    |
+| AC-10    | Registration/listing fails when the store is unavailable (5)                                                          | S22                    |
+| AC-11    | Newest first; same-instant ordering (2)                                                                               | S9                     |
+| AC-12    | Author, title text, year, genre scenarios (6)                                                                         | S25–S28                |
+| AC-13    | Filters combine (6)                                                                                                   | S29                    |
+| AC-14    | No matches (6)                                                                                                        | S28                    |
+| AC-15    | Invalid filter outline, including unknown parameter (6)                                                               | S27–S29                |
+| AC-16    | Survives a restart (2)                                                                                                | S10                    |
+| AC-17    | Loading then empty (1); lists books with details (2)                                                                  | S4, S11                |
+| AC-18    | Empty catalogue (1); nothing matches (6)                                                                              | S4, S30                |
+| AC-19    | Register from the page (2); register with filters applied (6)                                                         | S12, S31               |
+| AC-20    | Field errors inline (3); duplicate beside ISBN (4)                                                                    | S19, S21               |
+| AC-21    | Submit unavailable while pending (2)                                                                                  | S13                    |
+| AC-22    | Staff filter the list; filter keyboard (6)                                                                            | S30                    |
+| AC-23    | Registration fails outline; list fails outline; form input survives a list failure; reload fails after success (5)    | S23, S24               |
+| AC-24    | Keyboard registration (2); focus on first invalid field (3); filter keyboard (6); visible focus (7); axe checks (1–6) | S4, S12, S19, S30, S32 |
+| AC-25    | CI runs on a pull request (1)                                                                                         | S1, S5, T1             |
+| AC-26    | Newcomer starts both apps (1); Playwright journey (7)                                                                 | S6, S32, S33           |
+| AC-27    | Register and find; duplicate ISBN (7)                                                                                 | S32                    |
+| AC-28–33 | README checklist (7)                                                                                                  | S6, S10, S33           |
+| AC-34    | Clean-clone walk-through (7)                                                                                          | S33                    |
+| AC-35    | CI runs on a pull request; CI runs on push to main (1) — verified locally, pending first CI run                       | S5, P1                 |
+| AC-36    | CI uses the pinned toolchain; lockfile mismatch fails (1) — verified locally, pending first CI run                    | S5, P1                 |
+| AC-37    | CI fails when a check fails; Playwright absent (1) — verified locally, pending first CI run                           | S5, P1                 |
+| AC-38    | README checklist (7)                                                                                                  | S6, S33                |
 
 ### Message Catalogue
 
 API validation and conflict messages are written for staff, use the page's field names, and live once in `packages/schemas/src/validation-messages.ts`, attached to the schemas as Zod custom errors. The API returns them in `details[].message` and the page shows them verbatim (D69). Page-only copy lives as constants in the component that shows it. Scenarios assert this exact text.
 
-| Case | Field | Message |
-|---|---|---|
-| Title missing, blank or not text | `title` | Enter a title |
-| Title over 200 characters | `title` | Title must be 200 characters or fewer |
-| Author missing, blank or not text | `author` | Enter an author |
-| Author over 200 characters | `author` | Author must be 200 characters or fewer |
-| ISBN missing, blank or not text | `isbn` | Enter an ISBN |
-| ISBN wrong length, characters or checksum | `isbn` | Enter a valid 10- or 13-digit ISBN — check for typos |
-| Year missing or blank (the page omits a blank Year) | `publishedYear` | Enter a year |
-| Year not a whole number, or out of range | `publishedYear` | Year must be a whole number from 1450 to {currentYear} (computed from the injected clock) |
-| Genre not in the list | `genre` | Choose a genre from the list |
-| Unknown body field | `<field>` | "<field>" is not a recognised field |
-| Body malformed, empty or not an object | `body` | Send the book details as a JSON object |
-| Duplicate ISBN | `isbn` | A book with this ISBN is already registered — find it in the list |
-| Year filter invalid | `publishedYear` | Year must be a whole number of up to 4 digits, for example 1965 |
-| Genre filter invalid | `genre` | Choose a genre from the list |
-| Unknown or repeated filter | `<param>` | "<param>" is not a recognised filter / Give the "<param>" filter only once |
-| Page: registered | — | "<title>" registered. |
-| Page: registered but hidden by filters | — | "<title>" registered. It is hidden by the current filters — clear them to see it. |
-| Page: registration unavailable | — | Could not register the book. Check the service is running and try again. |
-| Page: list unavailable | — | Could not load books. Check the service is running and try again. (with a "Retry" button) |
-| Page: loading (first load only) | — | Loading books… |
-| Page: no books | — | No books registered yet. |
-| Page: no matches | — | No books match these filters. |
-| Page: list count (live region) | — | 1 book shown / N books shown |
+| Case                                                | Field           | Message                                                                                   |
+| --------------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------- |
+| Title missing, blank or not text                    | `title`         | Enter a title                                                                             |
+| Title over 200 characters                           | `title`         | Title must be 200 characters or fewer                                                     |
+| Author missing, blank or not text                   | `author`        | Enter an author                                                                           |
+| Author over 200 characters                          | `author`        | Author must be 200 characters or fewer                                                    |
+| ISBN missing, blank or not text                     | `isbn`          | Enter an ISBN                                                                             |
+| ISBN wrong length, characters or checksum           | `isbn`          | Enter a valid 10- or 13-digit ISBN — check for typos                                      |
+| Year missing or blank (the page omits a blank Year) | `publishedYear` | Enter a year                                                                              |
+| Year not a whole number, or out of range            | `publishedYear` | Year must be a whole number from 1450 to {currentYear} (computed from the injected clock) |
+| Genre not in the list                               | `genre`         | Choose a genre from the list                                                              |
+| Unknown body field                                  | `<field>`       | "<field>" is not a recognised field                                                       |
+| Body malformed, empty or not an object              | `body`          | Send the book details as a JSON object                                                    |
+| Duplicate ISBN                                      | `isbn`          | A book with this ISBN is already registered — find it in the list                         |
+| Year filter invalid                                 | `publishedYear` | Year must be a whole number of up to 4 digits, for example 1965                           |
+| Genre filter invalid                                | `genre`         | Choose a genre from the list                                                              |
+| Unknown or repeated filter                          | `<param>`       | "<param>" is not a recognised filter / Give the "<param>" filter only once                |
+| Page: registered                                    | —               | "<title>" registered.                                                                     |
+| Page: registered but hidden by filters              | —               | "<title>" registered. It is hidden by the current filters — clear them to see it.         |
+| Page: registration unavailable                      | —               | Could not register the book. Check the service is running and try again.                  |
+| Page: list unavailable                              | —               | Could not load books. Check the service is running and try again. (with a "Retry" button) |
+| Page: loading (first load only)                     | —               | Loading books…                                                                            |
+| Page: no books                                      | —               | No books registered yet.                                                                  |
+| Page: no matches                                    | —               | No books match these filters.                                                             |
+| Page: list count (live region)                      | —               | 1 book shown / N books shown                                                              |
 
 ### Approach Stances
 
@@ -320,18 +325,18 @@ API validation and conflict messages are written for staff, use the page's field
 
 STRIDE run for the two new endpoints and the browser-to-API flow (D41). Trust boundaries: browser page to Vite dev server, Vite proxy to API, API to SQLite file. Assets: the book catalogue (non-sensitive) and the integrity of the local machine's API.
 
-| STRIDE | Threat | Severity | Mitigation | Verification |
-|---|---|---|---|---|
-| Spoofing | Another host on the network calls the unauthenticated API (D32) | High | API listens on `localhost` only; no setting binds it to other interfaces | S3 scenario "API listens only on this machine" asserts every bound address is loopback |
-| Tampering | A malicious website in the same browser posts a book cross-site (CSRF) | Medium | Fastify's default `text/plain` parser is removed, so only `application/json` is accepted and every form-style content type gets `415`; a JSON post needs a CORS preflight the API never approves (no CORS headers, D6, D76) | S18 scenarios "A non-JSON body is refused" (four content types, nothing stored) and "No cross-origin access is granted" |
-| Tampering | SQL injection through filter values or fields | High | Parameterised statements only; title search uses `instr`, not `LIKE`, so wildcards are literal | S26 scenario "Title search treats special characters literally" |
-| Tampering | Stored script in a title or author runs in the page (XSS) | High | React text rendering only; no `dangerouslySetInnerHTML` (Oxlint `react/no-danger`) | S11 scenario "Book text is shown exactly as entered" |
-| Repudiation | Registrations cannot be attributed | Low | Accepted: no actors exist (D32). Each registration is logged at `info` with `id` and `isbn` | S8 test asserts the info log |
-| Information disclosure | Error responses leak stack traces or SQL | Medium | `500` body is exactly `{ error: "InternalError" }`; other 4xx bodies are generic; detail only in logs (D24, D77) | S18 and S22 assert exact bodies |
-| Information disclosure | Logs capture request bodies | Low | Request bodies are never logged; only field names on `warn` | S14 test asserts the warn log has field names and no submitted values |
-| Denial of service | Oversized bodies or strings | Low | Fastify default 1 MiB body limit returns `413`; strings capped at 200 characters | S18 "An oversized body is refused"; S14 covers the 200 cap |
-| Denial of service | Unbounded list response (no pagination, D26) | Low | Accepted for a small local dataset | n/a |
-| Elevation of privilege | No roles exist | n/a | n/a | n/a |
+| STRIDE                 | Threat                                                                 | Severity | Mitigation                                                                                                                                                                                                                  | Verification                                                                                                            |
+| ---------------------- | ---------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Spoofing               | Another host on the network calls the unauthenticated API (D32)        | High     | API listens on `localhost` only; no setting binds it to other interfaces                                                                                                                                                    | S3 scenario "API listens only on this machine" asserts every bound address is loopback                                  |
+| Tampering              | A malicious website in the same browser posts a book cross-site (CSRF) | Medium   | Fastify's default `text/plain` parser is removed, so only `application/json` is accepted and every form-style content type gets `415`; a JSON post needs a CORS preflight the API never approves (no CORS headers, D6, D76) | S18 scenarios "A non-JSON body is refused" (four content types, nothing stored) and "No cross-origin access is granted" |
+| Tampering              | SQL injection through filter values or fields                          | High     | Parameterised statements only; title search uses `instr`, not `LIKE`, so wildcards are literal                                                                                                                              | S26 scenario "Title search treats special characters literally"                                                         |
+| Tampering              | Stored script in a title or author runs in the page (XSS)              | High     | React text rendering only; no `dangerouslySetInnerHTML` (Oxlint `react/no-danger`)                                                                                                                                          | S11 scenario "Book text is shown exactly as entered"                                                                    |
+| Repudiation            | Registrations cannot be attributed                                     | Low      | Accepted: no actors exist (D32). Each registration is logged at `info` with `id` and `isbn`                                                                                                                                 | S8 test asserts the info log                                                                                            |
+| Information disclosure | Error responses leak stack traces or SQL                               | Medium   | `500` body is exactly `{ error: "InternalError" }`; other 4xx bodies are generic; detail only in logs (D24, D77)                                                                                                            | S18 and S22 assert exact bodies                                                                                         |
+| Information disclosure | Logs capture request bodies                                            | Low      | Request bodies are never logged; only field names on `warn`                                                                                                                                                                 | S14 test asserts the warn log has field names and no submitted values                                                   |
+| Denial of service      | Oversized bodies or strings                                            | Low      | Fastify default 1 MiB body limit returns `413`; strings capped at 200 characters                                                                                                                                            | S18 "An oversized body is refused"; S14 covers the 200 cap                                                              |
+| Denial of service      | Unbounded list response (no pagination, D26)                           | Low      | Accepted for a small local dataset                                                                                                                                                                                          | n/a                                                                                                                     |
+| Elevation of privilege | No roles exist                                                         | n/a      | n/a                                                                                                                                                                                                                         | n/a                                                                                                                     |
 
 Accepted risks: no authentication (D32), no pagination (D26), DNS-rebinding reads of the catalogue (data is non-sensitive and the tool is local; revisit if the tool is ever deployed, D34).
 
@@ -1367,12 +1372,12 @@ Feature: Register and find a book end to end
 
 ### Skipped (low value)
 
-| Finding | Rationale (one line) |
-|---|---|
-| Separate tests for the SQLite repository | Every repository behaviour is observable and covered through the HTTP acceptance tests. |
-| Vitest tests for the Vite proxy configuration | No branching logic; proven by the Playwright journey and the manual run. |
+| Finding                                            | Rationale (one line)                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Separate tests for the SQLite repository           | Every repository behaviour is observable and covered through the HTTP acceptance tests.                 |
+| Vitest tests for the Vite proxy configuration      | No branching logic; proven by the Playwright journey and the manual run.                                |
 | Tests for `server.ts` signal wiring and `main.tsx` | No logic once start-up lives in `start-server.ts` (D56, D75); covered by Playwright and the manual run. |
-| Tests asserting Tailwind classes | Styling has no behavioural signal; focus visibility is checked by Playwright, layout by the manual run. |
+| Tests asserting Tailwind classes                   | Styling has no behavioural signal; focus visibility is checked by Playwright, layout by the manual run. |
 
 ### Plan Decision Log
 
