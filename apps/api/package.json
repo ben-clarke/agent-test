@@ -1,0 +1,23 @@
+{
+  "name": "@library/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@library/schemas": "workspace:*",
+    "fastify": "5.12.7",
+    "pino": "10.4.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "tsx": "4.23.15",
+    "vitest": "5.0.5"
+  }
+}

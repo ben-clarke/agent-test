@@ -95,6 +95,22 @@ Full specification, including acceptance criteria AC-1 to AC-38: [`docs/specs/li
 | D39 | Formatting enforced in CI with `pnpm format:check` (`oxfmt --check`) | Format locally only | Choosing a formatter implies enforcing it; otherwise formatting drifts. | Agent |
 | D40 | Playwright is not run in CI for now; it runs locally only | Run Playwright in CI | Keeps CI fast and free of browser and two-app setup; the journey is checked locally before handoff. | Human |
 
+## Nice to Have
+
+Left out of the first run to keep it small. Each item notes why it would be worth doing next time.
+
+| Item | Why it would help |
+|---|---|
+| Full Turborepo setup | Cached, dependency-aware builds and tests across `apps/*` and `packages/*` as the workspace grows. |
+| Copy counts (total and available per book) | Makes the catalogue useful for real library stock, not just a list of titles. |
+| Split the instructions into multiple specs | Build the foundations first, then add functionality spec by spec; smaller specs are easier to plan, review and deliver. |
+| Wider Playwright coverage | This run has one local journey (S32) and no CI run (D40); more journeys and sad paths, run in CI, would catch UI regressions earlier. |
+| Quick mockup designs fed into the plan | Getting the design right up front is cheaper in time and money than tweaking the UI at the end. |
+| A different backend Database, such as DynamoDB, with an MSW mock backend for tests | Closer to a production setup than local SQLite; MSW keeps web tests fast and independent of the real API. Needs setup time this run did not have. |
+| Authentication approaches | Needed once there is more than one user or the tool leaves localhost (see D32). |
+| More API operations, such as `DELETE` and `PATCH` | Lets users correct or remove books; out of scope because the brief names only `POST` and `GET` (see D31, D33). |
+
+
 ## Implementation Plan
 
 ### Ticket

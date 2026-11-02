@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable pnpm through Corepack
+        run: |
+          npm install --global corepack
+          corepack enable
+
+      - name: Check toolchain matches .nvmrc and packageManager
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+          expected_node_major="$(tr -d 'v \r\n' < .nvmrc | cut -d. -f1)"
+          actual_node_major="$(node -p 'process.versions.node.split(".")[0]')"
+          expected_pnpm="$(node -p 'require("./package.json").packageManager.split("@")[1]')"
+          actual_pnpm="$(pnpm --version)"
+          if [ "$actual_node_major" != "$expected_node_major" ]; then
+            echo "Node major $actual_node_major does not match .nvmrc ($expected_node_major)" >&2
+            exit 1
+          fi
+          if [ "$actual_pnpm" != "$expected_pnpm" ]; then
+            echo "pnpm $actual_pnpm does not match packageManager ($expected_pnpm)" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test with coverage
+        run: pnpm test run

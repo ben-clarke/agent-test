@@ -39,6 +39,9 @@ build/
 coverage/
 .turbo
 test-results/
+playwright-report/
+apps/web/e2e/.data/
+apps/api/data/
 
 # TypeScript
 **/tsconfig.tsbuildinfo
