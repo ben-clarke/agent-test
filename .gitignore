@@ -1,0 +1,78 @@
+# General
+dist/
+logs/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+.vitest/
+.vitest-reports
+
+# Node.js
+.email-preview/
+node_modules
+node_modules/
+.pnp/
+.pnp.js
+.pnp.*
+.npm
+.pnpm-store/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.worktree
+.env
+dist/
+build/
+coverage/
+.turbo
+test-results/
+
+# TypeScript
+**/tsconfig.tsbuildinfo
+
+# macOS
+.DS_Store
+
+# Terraform
+**/.terraform/*
+
+PLAN.md
+**/TEST_PLAN.md
+.worktrees
+.worktrees/
+.serena/
+
+# Python bytecode from .claude skill scripts
+__pycache__/
+
+# dev-team workflow runtime artifacts (.claude/-scoped + .dev-team-reports/, #1406) v2 (regeneratable; not deliverables — issues #1101, #1377, #1406, #1412)
+.claude/memory/
+.claude/metrics/
+.claude/plans/
+.codex-state/
+/.dev-team-reports/*
+!/.dev-team-reports/test-improve/
+/memory/
+/reports/
+/metrics/
+/plans/
+.pr-review-passed
+
+# dev-team hygiene — machine-specific MCP config (absolute-path pollution — issues #1376, #1416)
+.mcp.json
+
+# Claude Code runtime lock (machine-specific)
+.claude/scheduled_tasks.lock

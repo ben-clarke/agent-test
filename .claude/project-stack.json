@@ -1,0 +1,14 @@
+{
+  "detected": "2026-10-05",
+  "stacks": ["typescript", "node"],
+  "frameworks": ["react", "react-router", "vitest", "playwright", "turbo"],
+  "packageManager": "pnpm",
+  "hasDocker": true,
+  "indicators": {
+    "package.json": true,
+    "tsconfig.json": true,
+    "pnpm-workspace.yaml": true,
+    "turbo.json": true
+  },
+  "agentTemplates": ["ts-enforcer", "esm-enforcer", "react-testing", "front-end-testing"]
+}

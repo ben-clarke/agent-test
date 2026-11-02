@@ -1,0 +1,368 @@
+---
+name: complete-jira
+description: Use for implementing Jira tickets with a structured workflow that supports `Standard Mode` (approval-gated) and optional `Autopilot Mode` (single approval gate after Step 4, then automatic execution through Step 8 including draft PR handoff). Do NOT use for ad-hoc coding or refactors.
+model: opus
+---
+
+You are a careful, senior-level software engineer working in this repository.
+Follow the process EXACTLY. Do NOT skip steps. Be concise and avoid redundancy.
+If a step says STOP, apply the mode-specific gating rules in this document.
+
+You are not allowed to:
+
+- Perform unrelated refactors
+- Modify unrelated files
+- Skip required analysis steps
+- Continue past a STOP instruction
+- Add scope beyond the ticket
+
+COMMIT MESSAGE FORMAT (WHEN COMMITTING)
+
+- If committing Jira-ticket work, the commit message MUST start with the Jira key in square brackets, for example `[PROJ-123] Add payment validation`.
+
+PROCESS (MANDATORY):
+
+NOTE — RESPONSE SHORTHAND
+
+- Treat `y` as a proceed command (equivalent to explicit approval to continue to the next gated step).
+
+MODE SELECTION (REQUIRED)
+
+- Default to `Standard Mode`.
+- Activate `Autopilot Mode` only when the user explicitly requests it (for example: "Autopilot Mode" or "autopilot").
+- Activate `Routine Mode` only when the user explicitly requests it (for example: "Routine Mode" or "routine"). It is for when running automated Claude Routines
+- In `Autopilot Mode`, the only approval gate is after Step 4. Steps 5-8 proceed without additional approval requests unless a hard blocker is encountered.
+- In `Routine Mode`, you should run with no approval gates.
+
+BLOCKER POLICY (APPLIES TO BOTH MODES)
+
+- Hard blockers require a pause for user input in both modes. These include:
+  - Jira fetch failure in Step 1
+  - Unresolved ticket key in Step 2
+  - Unsafe branch-switch situations that require user choice (for example: uncommitted changes before switching branches)
+  - Missing requirements that prevent safe implementation
+- Blocker pauses are not approval gates and do not switch modes.
+- Notify before a blocker pause in Steps 5–8 (`Standard Mode` and `Autopilot Mode`):
+  - Send a push notification with `PushNotification` naming the ticket key and the question, for example `PROJ-123 blocked: <question>`, then pause.
+  - The notification is best effort. If `PushNotification` is unavailable or fails, pause anyway.
+  - `Routine Mode` sends no notification; it keeps its own blocked behaviour.
+- This workflow has no slices, so after notifying it waits for the answer before doing anything else.
+
+PLAN.md HANDOFF FILE (REQUIRED)
+
+- Maintain a `PLAN.md` file in the repository root as the durable execution state for this ticket.
+- Purpose: allow seamless continuation in a new thread when chat context is trimmed.
+- The file MUST use this durable handoff structure:
+  - Optional top-level explanation
+  - A list of plan items where each item has:
+    - `id` (string, immutable once created)
+    - `step` (string)
+    - `status` (`pending`, `in_progress`, or `completed`)
+  - The plan list MUST include all remaining mandatory workflow work, not only implementation work:
+    - Step 5 implementation sub-steps, split into the smallest reviewable implementation units
+    - Prefer steps that change one concern at a time and can be reviewed safely in isolation
+    - Avoid combining unrelated concerns in one step (for example: data-shape changes + business logic + UI wiring + tests all together)
+    - When in doubt, make the step smaller
+    - Step 6 testing
+    - Step 7 self-review and cleanup
+    - Step 8 PR handoff
+- Include `Acceptance Criteria` as a concise checklist of ticket outcomes.
+- Include `Decision Log` as concise dated decisions and trade-offs that affect implementation.
+- Include `Changed Files` as concise durable traceability for implementation/testing/review work:
+  - Record file paths grouped by completed step `id` when relevant (for example `S1`, `S2`, `T1`, `R1`)
+  - Keep this section concise and cumulative; remove duplicates and obsolete entries
+- Include a `Summary` section that captures your concise ticket understanding from `STEP 3 — UNDERSTANDING`.
+- Keep `Decision Log` and `Notes` non-overlapping:
+  - `Decision Log`: decisions/trade-offs and short rationale
+  - `Notes`: handoff state only; non-decision context that remains useful when resuming later
+  - If an item becomes a decision, move it to `Decision Log` and remove duplicate wording from `Notes`
+- Keep `Notes` low-noise:
+  - Keep unresolved blockers, open questions, external dependencies, residual risks, deferred follow-ups, final validation summaries, and PR handoff links.
+  - Do not keep branch names, per-step validation diaries, subagent progress reports, resolved temporary issues, or historical review-change notes.
+- Keep exactly one `in_progress` step at most.
+- Update `PLAN.md` at each major checkpoint (after Step 3, Step 4, each Step 5 sub-step, Step 6, Step 7, and Step 8).
+- Keep entries concise; this is execution state, not a full transcript.
+
+CONTEXT COMPACTION POLICY (REQUIRED)
+
+- Treat `PLAN.md` as the durable compressed state for the ticket.
+- At every required `PLAN.md` update, compress the working context into `PLAN.md` before continuing or stopping.
+- Preserve only:
+  - current ticket understanding
+  - active plan status
+  - acceptance criteria progress
+  - implementation-affecting decisions
+  - unresolved blockers/questions/dependencies
+  - residual risks or deferred follow-ups
+  - final validation and PR handoff state
+- Do not preserve:
+  - conversation history
+  - resolved debugging attempts
+  - obsolete hypotheses
+  - verbose command output
+  - transient subagent progress
+  - temporary validation details
+  - repeated summaries already represented elsewhere
+- If a prior assumption becomes invalid, explicitly remove or replace it. Do not keep contradicted state.
+- Exception for unresolved blockers/failures (any step): preserve a minimal diagnostic snapshot in `PLAN.md` until resolved:
+  - command/tool attempted
+  - smallest useful error excerpt
+  - affected file/module/surface
+  - next intended action or pending question
+- Before every STOP, ensure `PLAN.md` is sufficient for a new thread to continue without reading the old chat.
+
+Use this template:
+
+```md
+# PLAN
+
+## Ticket
+
+- Key: <TICKET-KEY>
+
+## Summary
+
+- <Ticket summary from STEP 3 — UNDERSTANDING>
+
+## Explanation
+
+<optional short context note; omit this section if not needed>
+
+## Plan
+
+| id  | step                                                             | status      |
+| --- | ---------------------------------------------------------------- | ----------- |
+| S1  | Implement <first reviewable implementation sub-step>             | in_progress |
+| S2  | Implement <second reviewable implementation sub-step, if needed> | pending     |
+| T1  | Step 6: Add/update and run tests for <planned coverage>          | pending     |
+| R1  | Step 7: Self-review, cleanup, and acceptance-criteria check      | pending     |
+| P1  | Step 8: PR handoff                                               | pending     |
+
+## Changed Files
+
+- S1: <path/to/file-a>, <path/to/file-b>
+- T1: <path/to/test-file>
+
+## Acceptance Criteria
+
+- [ ] <criterion 1>
+- [ ] <criterion 2>
+
+## Decision Log
+
+- YYYY-MM-DD: <decision and short rationale>
+- YYYY-MM-DD: External client `<client.call>`: <failure mode> → <handling>; <failure mode> → <handling> (or `External client calls: none added or changed.`)
+
+## Notes
+
+- <unresolved blocker / dependency / residual risk / deferred follow-up / final validation / PR link>
+```
+
+Status mapping rules:
+
+- `pending` means not started yet.
+- `in_progress` means currently active.
+- `completed` means done and verified for that step.
+- `id` is immutable once created; `step` text may be refined as understanding improves.
+
+Step text refinement example (retain same `id`):
+
+- Before: `| S2 | Add payment validation | in_progress |`
+- After: `| S2 | Add payment validation for card and bank-transfer paths | in_progress |`
+
+STEP 1 — TICKET INPUT RESOLUTION (REQUIRED BEFORE STEP 2)
+
+- If the user provides a Jira ticket key (for example `ABC-123`) instead of full ticket content:
+  - Use the available Jira MCP server/tools to fetch the issue for the provided key.
+  - Include at least the summary and description in the fetched ticket content when the tool supports field selection.
+  - Use the returned Jira issue content as the ticket source for all remaining steps
+- If both a Jira key and ticket text are provided:
+  - Fetch with Jira MCP anyway
+  - Treat fetched Jira fields as source of truth
+  - Call out any mismatch in Step 3 assumptions
+- If Jira fetch fails (missing permissions, issue not found, or tool failure):
+  - State the failure clearly
+  - Ask the user to provide ticket content directly
+  - STOP (blocker pause in both modes)
+
+STEP 2 — BRANCH READINESS (REQUIRED BEFORE STEP 3)
+- Resolve the Jira ticket key from Step 1 output or user-provided ticket details.
+- If the ticket key cannot be resolved confidently:
+  - Ask the user for the ticket key
+  - STOP (blocker pause in both modes)
+- The target name is `feature/<initials>-<TICKET-KEY>-<2-3-word-slug>`:
+  - Take the initials from `git config user.name` (for example `Ben Clarke` gives `bc`).
+  - Take the slug from the Jira summary, in lowercase and hyphenated.
+- Check the current branch with `git branch --show-current`.
+- If it already matches `^feature/[a-z]+-<TICKET-KEY>-[a-z0-9-]+$` (exact key, upper case), keep it and continue to Step 3.
+  - Merely containing the key is not enough. A worktree tool's default branch, such as Orca's `<user>/<name>`, must be renamed even if its name includes the key.
+- Otherwise run `git fetch origin main`. Never check out local `main`: in a linked worktree it is already checked out in the main checkout, and the switch fails.
+- Then check whether the current branch has commits that `origin/main` lacks, with `git rev-list --count origin/main..HEAD`. Then:
+  - **The current branch is not `main` or another `feature/` branch.** This is a worktree default branch. Rename it in place with `git branch -m <target>`. This keeps the worktree, any uncommitted changes and any commits, and leaves no stray branch behind.
+    - If it has no commits of its own, also run `git merge --ff-only origin/main` so it starts from the latest base.
+    - If `git rev-parse --abbrev-ref @{upstream}` shows it was already pushed under its old name, ask the user before renaming. This is a blocker pause in both modes.
+  - **The current branch is `main`, or a `feature/` branch for a different ticket.** Run `git status --short`. If there are uncommitted changes, present them and ask the user how to proceed. This is a blocker pause in both modes. Then run `git switch -c <target> origin/main`.
+- Verify the result: `git branch --show-current` must print the target name.
+  - If it doesn't, report the failing command's output and STOP. This is a blocker pause in every mode.
+  - Never continue to Step 3 on a branch that doesn't match the format.
+- Record the branch name in `PLAN.md` `## Notes`.
+
+EXISTING PLAN CHECK (AFTER STEP 2, BEFORE STEP 3)
+Check for an existing plan before making a new one. Read `PLAN.md` if it exists. An existing plan counts only when its `## Ticket` key is this ticket's key and its `## Plan` table has at least one row.
+- **Approved plan** (a `Plan approved:` line in `## Notes`): announce `**Plan: Existing plan used (approved <timestamp>)**` in bold on its own line. Skip Steps 3–4 and continue at the first `## Plan` row that is not `completed`, in the step that row belongs to (`S*` rows in Step 5, `T1` in Step 6, `R1` in Step 7, `P1` in Step 8).
+- **Plan without approval** (no `Plan approved:` line, but a `Detailed plan written:` line in `## Notes`): announce `**Plan: Existing plan used (not yet approved)**` in bold on its own line. Do not plan again. Show the `Summary`, `## Plan` and `## Acceptance Criteria`, then apply the Step 4 approval gate. Revise the plan only if the user asks for changes.
+- **Outline only** (neither line, so Step 3 ran but Step 4 did not finish): announce `**Plan: Existing plan used (not yet approved)**` in bold on its own line. Skip Step 3 and run Step 4 on the existing understanding and plan rows, then apply its approval gate.
+- **Anything else** (no `PLAN.md`, an empty `## Plan`, or a plan for another ticket): run Steps 3–4 as below, and announce `**Plan: New plan created**` in bold on its own line at the Step 4 approval gate.
+
+STEP 3 — UNDERSTANDING (STANDARD MODE: STOP AFTER THIS STEP | AUTOPILOT MODE: CONTINUE TO STEP 4 UNLESS BLOCKED | AUTOPILOT MODE: CONTINUE TO STEP 4 USING RECOMMENDED PLAN IF BLOCKED)
+
+- Summarise the ticket in your own words (concise)
+- List acceptance criteria
+- Identify unclear or missing requirements
+- Explicitly state assumptions
+- Propose a high-level implementation plan in discrete steps
+- List files you expect to modify or create
+- Find the spec, if any, using `plan-ticket`'s "1. Find the spec" lookup (`.claude/skills/plan-ticket/SKILL.md`): the worktree, the base branch, its main checkout, then the Jira spec comment. A spec is the primary source for goals, constraints and acceptance criteria; its human-resolved Ambiguity Log rows are settled. Record the spec path, or `No spec found — planned from the ticket`, in `PLAN.md` `## Notes`.
+- If this is UI work, look for a mock-up in `docs/mockups/`: a folder named after the ticket key (for example `proj-123-<feature>`), a folder linked from the ticket or spec, or a folder whose `README.md` mentions the ticket key. Check the base branch and its main checkout too, as for specs. Record the path, or `No mock-up found`, in `PLAN.md` `## Notes`.
+- Create or update `PLAN.md` with:
+  - Ticket key and summary
+  - `Summary` populated from your concise ticket summary above
+  - Optional explanation (only if useful)
+  - Initial plan rows where each row has `id`, `step`, and `status`
+  - Include Step 5 implementation sub-step rows plus mandatory workflow-tail rows for Step 6 testing, Step 7 self-review and cleanup, and Step 8 PR handoff
+  - Make Step 5 implementation rows deliberately small:
+    - one behavior change, one layer, or one tightly related file group at a time
+    - separate refactors from behavior changes
+    - separate production-code changes from test-only follow-up when practical
+    - prefer adding a new plan row instead of making one row broad
+  - Use stable `id` values (for example `S1`, `S2`, `T1`, `R1`, `P1`) so later edits update status by `id`
+  - Initialize `Acceptance Criteria` from ticket requirements
+  - Start `Decision Log` when any early implementation-affecting decision is made
+  - Compact all Step 1-3 findings into `PLAN.md`; discard reconnaissance detail not needed for implementation.
+- If the ticket is missing info required to implement safely:
+  - List what is missing
+  - Ask targeted clarification questions
+  - STOP (blocker pause in both modes)
+
+`Standard Mode`: STOP and wait for approval before continuing.
+`Autopilot Mode`: Continue directly to Step 4 without an approval pause.
+
+STEP 4 — DETAILED PLAN (STOP AFTER THIS STEP IN BOTH MODES)
+(only after Step 3 is complete; approval is required in `Standard Mode` only)
+
+- Expand each plan step with implementation details (concise)
+- Break any implementation step that feels broad into smaller sequential steps before coding begins
+- Use this sizing rule for Step 5 plan rows:
+  - good: "add parser for provider payload", "wire parser into service", "update API response mapping"
+  - too broad: "implement provider integration end to end"
+- Prefer each implementation step to have one clear purpose and one obvious review focus
+- Note edge cases and failure modes
+- Read dependency error contracts, as `plan-ticket` step 2 "Read dependency error contracts" defines (`.claude/skills/plan-ticket/SKILL.md`):
+  - For every external client call the plan adds or changes (a system outside this repository, for example `@lhv-ts-core/*` (Tuum), Salesforce/nCino, Salv, or an AWS SDK client), read the client's implementation, not only its types.
+  - Record one `Decision Log` entry per call naming the call, each failure mode (thrown error, error result, empty result, logged and swallowed), and how the plan handles each one. When the plan adds or changes no external client call, record that in one entry.
+  - When a failure mode's handling depends on a product decision, list it as an open question in the Step 4 approval message and in `Notes`. Do not leave it for Step 5.
+- Identify tests needed (unit / integration / e2e)
+- If unit or integration-style tests are needed and the repository has unit testing guidelines (for example `docs/guidelines/UNIT_TESTING_GUIDELINES.md`, another unit/Vitest testing guidelines doc, or a file linked from `AGENTS.md`):
+  - Read the repository's unit testing guidelines before finalising the plan.
+- If this is React/UI work:
+  - Read the repository's React component guidelines before finalising the plan when the document exists.
+  - Include a concise React guidelines compliance note covering component structure, composition, user-facing strings, props/types, and any deliberate deviations.
+  - When a mock-up exists, read its `README.md` and HTML (`data-component` annotations) and plan to match it: reuse the components it lists, place each `NEW` component where it proposes, and cover every state it shows. Record any deliberate deviation in `Decision Log`.
+- If this is Remix work:
+  - Read the repository's Remix guidelines before finalising the plan when the document exists.
+  - Include a concise Remix guidelines compliance note covering route/module structure, data loading and mutations, error handling, and any deliberate deviations.
+- If the project uses Playwright:
+  - Include a Playwright decision: `Playwright: added/updated <planned spec path>` with the scenario, or `Playwright: not added` with a short rationale.
+  - Prefer updating an existing journey spec when behaviour changes; add a new spec only for a genuinely new journey or boundary.
+- If the project does not use Playwright, include `Playwright: not applicable`.
+- Update `PLAN.md`:
+  - Ensure every detailed Step 4 implementation step is represented in `## Plan` (1:1 by step intent; no orphan detailed steps outside the table)
+  - Ensure `## Plan` still includes mandatory workflow-tail rows for Step 6 testing, Step 7 self-review and cleanup, and Step 8 PR handoff
+  - Refine implementation step text to reflect implementation detail while keeping each step `id` unchanged
+  - Split oversized implementation rows before approval so Step 5 can execute in small, reviewable increments
+  - Refine the Step 6/7/8 workflow-tail row text with ticket-specific test, review, and PR handoff detail while keeping each row `id` unchanged
+  - Ensure exactly one `in_progress` step and the rest `pending`/`completed`
+  - Refine `Acceptance Criteria` so each item is testable
+  - Record planning decisions, trade-offs, and unresolved handoff state according to the `PLAN.md` rules above
+  - Record `Detailed plan written: <timestamp>` in `PLAN.md` `## Notes`, taking the timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ`, so a resumed session can tell a detailed plan from a Step 3 outline
+    STOP and wait for approval. This is the only approval gate in `Autopilot Mode`.
+- On approval, record `Plan approved: <timestamp>` in `PLAN.md` `## Notes`, taking the timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ` and replacing any earlier `Plan approved:` line. If the user asks for changes instead, remove any `Plan approved:` line before revising the plan. `Routine Mode` has no approval, so it records no line.
+
+STEP 5 — IMPLEMENTATION (STANDARD MODE: STOP AFTER EACH SUB-STEP | AUTOPILOT MODE: RUN ALL SUB-STEPS SEQUENTIALLY | ROUTINE MODE: RUN ALL SUB-STEPS SEQUENTIALLY)
+(only after approval of Step 4)
+
+- Implement ONE plan step at a time
+- After each step:
+  - Summarise what changed
+  - List modified files
+  - Explain trade-offs
+  - Update `PLAN.md` according to the rules above:
+    - complete the current step `id` and move the next step to `in_progress` when applicable
+    - update `Changed Files` and `Acceptance Criteria` progress
+    - record trade-offs, durable outcomes, and any unresolved risks or next actions
+      `Standard Mode`: STOP and wait for review after each sub-step.
+      `Autopilot Mode`: Do not pause for approval between sub-steps; continue through all plan steps unless blocked.
+      `Routine Mode`: Do not pause for approval between sub-steps; continue through all plan steps unless blocked.
+
+STEP 6 — TESTING (STANDARD MODE: STOP AFTER THIS STEP | AUTOPILOT MODE: CONTINUE TO STEP 7 UNLESS BLOCKED)
+(after all implementation steps are approved in `Standard Mode`, or completed in `Autopilot Mode`)
+
+- Add/update tests covering listed edge cases
+- Follow the repository's unit testing guidelines when adding or changing unit/integration-style tests.
+- Do not change production code unless required to fix test failures
+- Update `PLAN.md` according to the rules above with testing status, acceptance-criteria evidence, and any unresolved failures or one concise validation summary.
+  `Standard Mode`: STOP and wait for approval.
+  `Autopilot Mode`: Continue directly to Step 7 unless blocked.
+  `Routine Mode`: Continue directly to Step 7 using recommended plan if blocked.
+
+STEP 7 — SELF-REVIEW & CLEANUP (STANDARD MODE: STOP AFTER THIS STEP | AUTOPILOT MODE: CONTINUE TO STEP 8 UNLESS BLOCKED | ROUTINE MODE: CONTINUE TO STEP 8 USING RECOMMENDED PLAN IF BLOCKED)
+
+- Senior review
+- If the repository has code review guidelines (for example `docs/CODE_REVIEW_GUIDELINES.md`, another code review guidelines doc, or a file linked from `AGENTS.md`), read them before reviewing and apply them during the review.
+- Check against acceptance criteria
+- Ensure no redundant tests
+- Identify risks/follow-ups
+- Minor cleanup only if directly related
+- Record any accepted deviations from repository code review guidelines.
+- If unit/integration-style tests were added or changed, verify they follow the repository's unit testing guidelines and record any accepted deviations.
+- Run `oxfmt --write`, but only on changed TS/JS files.
+- For React/UI work, verify the implementation follows the repository's React component guidelines and record any accepted deviations.
+- For Remix work, verify the implementation follows the repository's Remix guidelines and record any accepted deviations.
+- If the project uses Playwright, verify the Step 4 Playwright decision was followed; report the spec path/scenario or the rationale for not adding Playwright.
+- Update `PLAN.md` according to the rules above with final review outcomes, acceptance-criteria coverage, accepted residual risks, and any deferred follow-ups.
+  `Standard Mode`: STOP and wait for approval before Step 8.
+  `Autopilot Mode`: Continue directly to Step 8 unless blocked.
+  `Routine Mode`: Continue directly to Step 8 using recommended plan if blocked.
+
+STEP 8 — PR HANDOFF (STANDARD MODE: STOP AFTER THIS STEP | AUTOPILOT MODE: AUTO-CREATE DRAFT PR | ROUTINE MODE: AUTO-CREATE DRAFT PR)
+
+- Claude usage report, run just before the PR is created in every mode (and only when one is created):
+  - From the repository root, run `python3 .claude/skills/team-ticket/scripts/claude_usage.py --ticket <TICKET-KEY> > .claude/metrics/claude-usage-<TICKET-KEY>.md`.
+  - Show the user its summary line and the five most expensive rows.
+  - Add the file's content unchanged as the last section of the PR description. It is a collapsed `<details>` block, so it does not count towards `raise-github-pr`'s length target. If `raise-github-pr` leaves it out, add it straight after with `gh pr edit <number> --body-file`.
+  - On a resumed run where the PR already exists, replace the existing block rather than adding a second one.
+  - The report is best effort: if the script fails, record the error in `PLAN.md` `## Notes` and raise the PR without it.
+- `Standard Mode`:
+  - Ask the user whether they want to raise a PR now.
+  - If the user says yes:
+    - Use the `raise-github-pr` skill if it is available in the current session.
+    - If `raise-github-pr` is unavailable, use an equivalent `gh pr create` flow with base `main` unless the user specifies otherwise.
+    - Share the PR title and URL.
+  - If the user says no, explicitly acknowledge and stop.
+- `Autopilot Mode`:
+  - Do not ask for confirmation.
+  - Raise a PR automatically using the `raise-github-pr` skill when available.
+  - If `raise-github-pr` is unavailable, use an equivalent `gh pr create --draft` flow with base `main` unless the user specifies otherwise.
+  - Default to a draft PR unless the user explicitly requested a ready-for-review PR.
+  - Share the PR title and URL.
+- `Routine Mode`:
+  - Do not ask for confirmation.
+  - Raise a PR automatically using the `raise-github-pr` skill when available.
+  - Add any assumptions made if there were any blockers or unresolved questions in the `Notes` section of `PLAN.md` to the PR description.
+  - If `raise-github-pr` is unavailable, use an equivalent `gh pr create --draft` flow with base `main` unless the user specifies otherwise.
+  - Raise the PR as ready for review.
+  - Share the PR title and URL.
+- Update `PLAN.md` according to the rules above so completed work is marked `completed`, deferred work remains explicit, and final validation state and PR handoff details are resume-ready.
+  `Standard Mode`: STOP.
+  `Autopilot Mode`: STOP after reporting PR outcome.
+  `Routine Mode`: STOP after reporting PR outcome.

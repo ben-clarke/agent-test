@@ -1,0 +1,33 @@
+{
+  "file_destruction": ["rm -rf", "rm -r", "rm -fr"],
+  "database_destruction": ["drop table", "drop database", "truncate table"],
+  "git_destruction": [
+    "git push --force",
+    "git push -f",
+    "git reset --hard",
+    "git clean -f",
+    "git checkout -- .",
+    "git branch -D"
+  ],
+  "process_destruction": ["kill -9", "killall", "pkill"],
+  "permission_escalation": ["chmod 777"],
+  "safe_rm_targets": [
+    "node_modules",
+    "dist",
+    "build",
+    ".cache",
+    "coverage",
+    "tmp",
+    "__pycache__",
+    ".turbo",
+    ".next",
+    "playwright-report",
+    "test-results"
+  ],
+  "block_on_default_branch": {
+    "git push --force": "target",
+    "git push -f": "target",
+    "git branch -D": "target",
+    "git reset --hard": "current"
+  }
+}
